@@ -1,0 +1,196 @@
+
+<div id="app" style="display:flex;height:600px;border:0.5px solid var(--color-border-tertiary);border-radius:12px;overflow:hidden;background:var(--color-background-primary);font-family:var(--font-sans,sans-serif);">
+  <div id="sidebar" style="width:155px;min-width:155px;border-right:0.5px solid var(--color-border-tertiary);padding:12px 8px;display:flex;flex-direction:column;gap:5px;background:var(--color-background-secondary);overflow-y:auto;">
+    <div style="font-size:10px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.07em;padding:0 4px;margin-bottom:4px;">Shapes</div>
+  </div>
+  <div id="main" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 10px;gap:10px;">
+    <div id="shape-title" style="font-size:24px;font-weight:600;color:var(--color-text-primary);">Rectangular Prism</div>
+    <div id="canvas-wrap" style="width:320px;height:320px;border-radius:10px;overflow:hidden;cursor:grab;"></div>
+    <div style="font-size:13px;color:var(--color-text-secondary);">drag to rotate</div>
+  </div>
+  <div id="panel" style="width:215px;min-width:215px;border-left:0.5px solid var(--color-border-tertiary);padding:22px 18px;display:flex;flex-direction:column;background:var(--color-background-secondary);">
+    <div style="font-size:10px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.07em;margin-bottom:18px;">Properties</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid var(--color-border-tertiary);">
+      <span style="font-size:17px;color:var(--color-text-primary);">Corners</span>
+      <input id="inp-corners" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="?" maxlength="2" style="width:52px;height:44px;text-align:center;font-size:20px;font-weight:600;border:1.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-primary);color:var(--color-text-primary);outline:none;">
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid var(--color-border-tertiary);">
+      <span style="font-size:17px;color:var(--color-text-primary);">Edges</span>
+      <input id="inp-edges" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="?" maxlength="2" style="width:52px;height:44px;text-align:center;font-size:20px;font-weight:600;border:1.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-primary);color:var(--color-text-primary);outline:none;">
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;">
+      <span style="font-size:17px;color:var(--color-text-primary);">Faces</span>
+      <input id="inp-faces" type="tel" inputmode="numeric" pattern="[0-9]*" placeholder="?" maxlength="2" style="width:52px;height:44px;text-align:center;font-size:20px;font-weight:600;border:1.5px solid var(--color-border-secondary);border-radius:8px;background:var(--color-background-primary);color:var(--color-text-primary);outline:none;">
+    </div>
+    <button id="check-btn" style="margin-top:20px;padding:12px;border-radius:9px;border:1.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);font-size:15px;font-weight:600;cursor:pointer;">Check answers</button>
+    <div id="result-msg" style="margin-top:12px;font-size:14px;text-align:center;min-height:20px;font-weight:500;"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const SHAPES=[
+  {id:'cube',      name:'Cube',             corners:8, edges:12,faces:6, color:0x378ADD},
+  {id:'rect',      name:'Rectangular Prism',corners:8, edges:12,faces:6, color:0x1D9E75},
+  {id:'triprism',  name:'Triangular Prism', corners:6, edges:9, faces:5, color:0xBA7517},
+  {id:'cylinder',  name:'Cylinder',         corners:0, edges:2, faces:3, color:0xD4537E},
+  {id:'cone',      name:'Cone',             corners:1, edges:1, faces:2, color:0x7F77DD},
+  {id:'sphere',    name:'Sphere',           corners:0, edges:0, faces:1, color:0xD85A30},
+];
+
+const THUMB={
+  cube:   c=>`<rect x="3" y="9" width="15" height="15" fill="${c}33" stroke="${c}" stroke-width="1.5"/><polygon points="3,9 9,4 24,4 18,9" fill="${c}55" stroke="${c}" stroke-width="1.5"/><polygon points="18,9 24,4 24,19 18,24" fill="${c}44" stroke="${c}" stroke-width="1.5"/>`,
+  rect:   c=>`<rect x="1" y="10" width="18" height="11" fill="${c}33" stroke="${c}" stroke-width="1.5"/><polygon points="1,10 6,5 24,5 19,10" fill="${c}55" stroke="${c}" stroke-width="1.5"/><polygon points="19,10 24,5 24,16 19,21" fill="${c}44" stroke="${c}" stroke-width="1.5"/>`,
+  triprism:c=>`<polygon points="6,23 26,23 16,5" fill="${c}33" stroke="${c}" stroke-width="1.5"/><polygon points="6,23 11,18 21,18 26,23" fill="${c}44" stroke="${c}" stroke-width="1.5"/>`,
+  cylinder:c=>`<ellipse cx="16" cy="8" rx="10" ry="4" fill="${c}55" stroke="${c}" stroke-width="1.5"/><rect x="6" y="8" width="20" height="13" fill="${c}33"/><line x1="6" y1="8" x2="6" y2="21" stroke="${c}" stroke-width="1.5"/><line x1="26" y1="8" x2="26" y2="21" stroke="${c}" stroke-width="1.5"/><ellipse cx="16" cy="21" rx="10" ry="4" fill="${c}33" stroke="${c}" stroke-width="1.5"/>`,
+  cone:   c=>`<polygon points="16,3 4,25 28,25" fill="${c}33" stroke="${c}" stroke-width="1.5"/><ellipse cx="16" cy="25" rx="12" ry="3.5" fill="${c}44" stroke="${c}" stroke-width="1.5"/>`,
+  sphere: c=>`<circle cx="16" cy="14" r="11" fill="${c}33" stroke="${c}" stroke-width="1.5"/><ellipse cx="16" cy="14" rx="11" ry="4" fill="none" stroke="${c}" stroke-width="1" stroke-dasharray="3,2"/>`,
+};
+
+let currentShape=SHAPES[1];
+let renderer,scene,camera,meshGroup,animId;
+let isDragging=false,prevMouse={x:0,y:0};
+let autoRotate=true;
+
+SHAPES.forEach(shape=>{
+  const hex='#'+shape.color.toString(16).padStart(6,'0');
+  const btn=document.createElement('button');
+  btn.dataset.id=shape.id;
+  btn.style.cssText='display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;border:1.5px solid transparent;cursor:pointer;background:transparent;color:var(--color-text-primary);font-size:12.5px;font-weight:400;width:100%;text-align:left;';
+  btn.innerHTML=`<div style="width:42px;height:34px;border-radius:6px;background:${hex}1a;border:1px solid ${hex}44;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="30" height="26" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">${(THUMB[shape.id]||THUMB.cube)(hex)}</svg></div><span>${shape.name}</span>`;
+  btn.addEventListener('click',()=>selectShape(shape));
+  document.getElementById('sidebar').appendChild(btn);
+});
+
+const wrap=document.getElementById('canvas-wrap');
+renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setSize(320,320);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setClearColor(0x000000,0);
+wrap.appendChild(renderer.domElement);
+camera=new THREE.PerspectiveCamera(40,1,0.1,100);
+camera.position.z=4.8;
+
+const domEl=renderer.domElement;
+domEl.addEventListener('mousedown',e=>{isDragging=true;autoRotate=false;prevMouse={x:e.clientX,y:e.clientY};domEl.style.cursor='grabbing';});
+window.addEventListener('mousemove',e=>{
+  if(!isDragging||!meshGroup)return;
+  meshGroup.rotation.y+=(e.clientX-prevMouse.x)*0.012;
+  meshGroup.rotation.x+=(e.clientY-prevMouse.y)*0.012;
+  prevMouse={x:e.clientX,y:e.clientY};
+});
+window.addEventListener('mouseup',()=>{if(isDragging){isDragging=false;domEl.style.cursor='grab';}});
+domEl.addEventListener('touchstart',e=>{e.preventDefault();isDragging=true;autoRotate=false;prevMouse={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:false});
+domEl.addEventListener('touchmove',e=>{
+  e.preventDefault();if(!isDragging||!meshGroup)return;
+  meshGroup.rotation.y+=(e.touches[0].clientX-prevMouse.x)*0.012;
+  meshGroup.rotation.x+=(e.touches[0].clientY-prevMouse.y)*0.012;
+  prevMouse={x:e.touches[0].clientX,y:e.touches[0].clientY};
+},{passive:false});
+domEl.addEventListener('touchend',()=>{isDragging=false;});
+
+function buildScene(shapeId,color){
+  if(animId)cancelAnimationFrame(animId);
+  scene=new THREE.Scene();
+
+  // Flat ambient only — no directional light so no colour gradient
+  scene.add(new THREE.AmbientLight(0xffffff,1.0));
+
+  meshGroup=new THREE.Group();
+  meshGroup.rotation.x=0.3;meshGroup.rotation.y=-0.4;
+
+  // MeshBasicMaterial = completely flat, no lighting artefacts
+  const faceMat=new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.45,side:THREE.DoubleSide});
+  const edgeMat=new THREE.LineBasicMaterial({color,linewidth:2});
+  const dotMat=new THREE.MeshBasicMaterial({color});
+
+  let geom;
+  if(shapeId==='cube')geom=new THREE.BoxGeometry(1.6,1.6,1.6);
+  else if(shapeId==='rect')geom=new THREE.BoxGeometry(2.2,1.2,1.0);
+  else if(shapeId==='triprism'){
+    const sh=new THREE.Shape();
+    sh.moveTo(-1.05,-0.75);sh.lineTo(1.05,-0.75);sh.lineTo(0,0.9);sh.closePath();
+    geom=new THREE.ExtrudeGeometry(sh,{depth:1.5,bevelEnabled:false});
+    geom.translate(0,0,-0.75);
+  }else if(shapeId==='cylinder')geom=new THREE.CylinderGeometry(0.9,0.9,1.8,32);
+  else if(shapeId==='cone')geom=new THREE.ConeGeometry(1.05,2.1,32);
+  else geom=new THREE.SphereGeometry(1.1,48,48);
+
+  meshGroup.add(new THREE.Mesh(geom,faceMat));
+  meshGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(geom,15),edgeMat));
+
+  const addDot=(x,y,z)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(0.075,10,10),dotMat);m.position.set(x,y,z);meshGroup.add(m);};
+  if(shapeId==='cube'){const s=0.8;for(const x of[-s,s])for(const y of[-s,s])for(const z of[-s,s])addDot(x,y,z);}
+  else if(shapeId==='rect'){const[x,y,z]=[1.1,0.6,0.5];for(const xi of[-x,x])for(const yi of[-y,y])for(const zi of[-z,z])addDot(xi,yi,zi);}
+  else if(shapeId==='triprism'){[[-1.05,-0.75,-0.75],[1.05,-0.75,-0.75],[0,0.9,-0.75],[-1.05,-0.75,0.75],[1.05,-0.75,0.75],[0,0.9,0.75]].forEach(v=>addDot(...v));}
+  else if(shapeId==='cone')addDot(0,1.05,0);
+
+  if(shapeId==='sphere'){
+    // Darker solid dots for face features — no lighting so colour is pure
+    const faceColor=new THREE.Color(color).multiplyScalar(0.45);
+    const fm=new THREE.MeshBasicMaterial({color:faceColor});
+    const R=1.12;
+    for(const ex of[-0.3,0.3]){
+      const ey=0.3,ez=Math.sqrt(Math.max(0,R*R-ex*ex-ey*ey));
+      const m=new THREE.Mesh(new THREE.SphereGeometry(0.1,12,12),fm);m.position.set(ex,ey,ez);meshGroup.add(m);
+    }
+    const pts=[];
+    for(let i=0;i<=16;i++){
+      const t=i/16,ang=-0.6+t*1.2;
+      const sx=Math.sin(ang)*0.5,sy=-0.15+Math.sin(t*Math.PI)*(-0.28);
+      const sz=Math.sqrt(Math.max(0,R*R-sx*sx-sy*sy));
+      pts.push(new THREE.Vector3(sx,sy,sz));
+    }
+    const tube=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),24,0.055,8,false);
+    meshGroup.add(new THREE.Mesh(tube,fm));
+  }
+
+  scene.add(meshGroup);
+  autoRotate=true;
+  animId=null;
+  (function loop(){animId=requestAnimationFrame(loop);if(autoRotate&&meshGroup)meshGroup.rotation.y+=0.0035;renderer.render(scene,camera);})();
+}
+
+function selectShape(shape){
+  currentShape=shape;
+  document.getElementById('shape-title').textContent=shape.name;
+  document.querySelectorAll('#sidebar button').forEach(b=>{
+    b.style.borderColor='transparent';b.style.color='var(--color-text-primary)';
+    b.style.fontWeight='400';b.style.background='transparent';
+  });
+  const ab=document.querySelector('#sidebar button[data-id="'+shape.id+'"]');
+  if(ab){ab.style.borderColor='#378ADD';ab.style.color='#185FA5';ab.style.fontWeight='600';ab.style.background='var(--color-background-primary)';}
+  ['corners','edges','faces'].forEach(k=>{
+    const i=document.getElementById('inp-'+k);
+    i.value='';i.style.borderColor='';i.style.background='';i.style.color='';
+  });
+  document.getElementById('result-msg').textContent='';
+  buildScene(shape.id,shape.color);
+}
+
+['corners','edges','faces'].forEach(k=>{
+  const inp=document.getElementById('inp-'+k);
+  inp.addEventListener('focus',()=>{inp.style.borderColor='#378ADD';inp.style.boxShadow='0 0 0 3px rgba(55,138,221,0.15)';});
+  inp.addEventListener('blur',()=>{inp.style.boxShadow='';if(!inp.classList.contains('correct')&&!inp.classList.contains('wrong'))inp.style.borderColor='';});
+  // allow only digits
+  inp.addEventListener('input',()=>{inp.value=inp.value.replace(/[^0-9]/g,'').slice(0,2);});
+});
+
+document.getElementById('check-btn').addEventListener('click',()=>{
+  const ans={corners:currentShape.corners,edges:currentShape.edges,faces:currentShape.faces};
+  let correct=0,total=0;
+  ['corners','edges','faces'].forEach(k=>{
+    const inp=document.getElementById('inp-'+k);const val=parseInt(inp.value,10);
+    inp.style.borderColor='';inp.style.background='';inp.style.color='';inp.style.boxShadow='';
+    if(!inp.value)return;total++;
+    if(val===ans[k]){inp.style.borderColor='#1D9E75';inp.style.background='#E1F5EE';inp.style.color='#085041';correct++;}
+    else{inp.style.borderColor='#E24B4A';inp.style.background='#FCEBEB';inp.style.color='#501313';}
+  });
+  const msg=document.getElementById('result-msg');
+  if(!total){msg.textContent='Fill in your answers first!';msg.style.color='var(--color-text-secondary)';return;}
+  msg.textContent=correct===total?'🎉 All correct!':correct+' of '+total+' correct — try again!';
+  msg.style.color=correct===total?'#1D9E75':'#E24B4A';
+});
+
+selectShape(currentShape);
+</script>
